@@ -31,17 +31,17 @@ async function extrairDadosComGPT(texto, requestId = 'local') {
         {
           role: "system",
           content: `Você é um assistente especializado em extrair dados estruturados de textos.
-Analise o texto fornecido e extraia as seguintes informações:
-- nome (primeiro nome)
-- sobrenome (último nome ou nome completo sem o primeiro nome)
-- data_nascimento (formato: DD/MM/AAAA ou AAAA-MM-DD)
+              Analise o texto fornecido e extraia as seguintes informações:
+              - nome (primeiro nome)
+              - sobrenome (último nome ou nome completo sem o primeiro nome)
+              - data_nascimento (formato: DD/MM/AAAA ou AAAA-MM-DD)
 
-Se algum dado não estiver presente no texto, retorne string vazia para esse campo.
+              Se algum dado não estiver presente no texto, retorne string vazia para esse campo.
 
-IMPORTANTE: Retorne APENAS um objeto JSON válido no formato:
-{"nome": "", "sobrenome": "", "data_nascimento": ""}
+              IMPORTANTE: Retorne APENAS um objeto JSON válido no formato:
+              {"nome": "", "sobrenome": "", "data_nascimento": ""}
 
-Não inclua explicações, apenas o JSON.`
+              Não inclua explicações, apenas o JSON.`
         },
         {
           role: "user",
