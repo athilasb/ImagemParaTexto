@@ -1,12 +1,43 @@
-# API de OCR - Conversor de Imagem para Texto
+# API de OCR - Conversor de Imagem para Texto com IA
 
-API REST que converte imagens para texto usando OCR (Tesseract.js) através de upload de arquivos.
+API REST que converte imagens para texto usando OCR (Tesseract.js) e extrai dados estruturados (nome, sobrenome, data de nascimento) usando GPT-4.
+
+## 🚀 Funcionalidades
+
+- ✅ **OCR Avançado:** Extração de texto de imagens com Tesseract.js
+- ✅ **Extração de Dados com IA:** GPT-4 analisa o texto e extrai automaticamente:
+  - Nome (primeiro nome)
+  - Sobrenome
+  - Data de nascimento
+- ✅ **Upload de Arquivos:** Envie imagens diretamente (multipart/form-data)
+- ✅ **Isolamento Total:** Cada requisição é completamente isolada
+- ✅ **Múltiplos Idiomas:** Português, Inglês, Espanhol, Francês, Alemão, Italiano
+- ✅ **Rastreamento:** RequestId único para cada processamento
 
 ## Instalação
 
 ```bash
 npm install
 ```
+
+## Configuração
+
+1. **Configure a chave da OpenAI:**
+
+Crie um arquivo `.env` na raiz do projeto (ou copie `.env.example`):
+
+```bash
+# .env
+OPENAI_API_KEY=sk-proj-sua-chave-aqui
+PORT=3000
+```
+
+**⚠️ IMPORTANTE:** A chave da OpenAI é **obrigatória** para a extração de dados. Sem ela, a API irá funcionar apenas para OCR, retornando dados_extraidos vazios.
+
+2. **Obter chave da OpenAI:**
+   - Acesse https://platform.openai.com/api-keys
+   - Crie uma nova chave de API
+   - Cole no arquivo `.env`
 
 ## Como Executar
 
@@ -73,7 +104,7 @@ curl http://localhost:3000/health
 ```
 
 ### POST `/ocr`
-Extrai texto de uma imagem através de upload de arquivo.
+Extrai texto de uma imagem através de upload de arquivo e analisa com IA para extrair dados estruturados.
 
 **Content-Type:** `multipart/form-data`
 
@@ -85,7 +116,12 @@ Extrai texto de uma imagem através de upload de arquivo.
 ```json
 {
   "requestId": "a1b2c3d4e5f6g7h8",
-  "texto": "Texto extraído da imagem",
+  "texto_original": "Nome: João Silva\nData de Nascimento: 15/03/1990\nCPF: 123.456.789-00",
+  "dados_extraidos": {
+    "nome": "João",
+    "sobrenome": "Silva",
+    "data_nascimento": "15/03/1990"
+  },
   "confianca": 89.5,
   "palavras": 42,
   "idioma": "por",
@@ -97,9 +133,13 @@ Extrai texto de uma imagem através de upload de arquivo.
 
 **Campos da resposta:**
 - `requestId`: ID único da requisição para rastreamento e debug
-- `texto`: Texto extraído da imagem
+- `texto_original`: Texto completo extraído da imagem via OCR
+- `dados_extraidos`: Dados estruturados extraídos pelo GPT-4
+  - `nome`: Primeiro nome (vazio se não encontrado)
+  - `sobrenome`: Sobrenome (vazio se não encontrado)
+  - `data_nascimento`: Data no formato DD/MM/AAAA ou AAAA-MM-DD (vazio se não encontrado)
 - `confianca`: Nível de confiança do OCR (0-100)
-- `palavras`: Número de palavras identificadas
+- `palavras`: Número de palavras identificadas no OCR
 - `idioma`: Idioma utilizado no processamento
 - `arquivo`: Nome do arquivo original enviado
 - `tamanho`: Tamanho do arquivo em bytes
@@ -219,6 +259,63 @@ curl -X POST http://localhost:3000/ocr \
 
 **Tamanho máximo:** 50MB por arquivo
 
+## 🤖 Extração de Dados com IA
+
+A API utiliza **GPT-4o-mini** da OpenAI para analisar automaticamente o texto extraído e identificar dados estruturados.
+
+### Como funciona:
+
+1. **OCR (Tesseract):** Extrai todo o texto da imagem
+2. **Análise IA (GPT-4):** Processa o texto e identifica:
+   - **Nome:** Primeiro nome da pessoa
+   - **Sobrenome:** Sobrenome ou resto do nome completo
+   - **Data de Nascimento:** Em formato DD/MM/AAAA ou AAAA-MM-DD
+
+### Exemplos de Extração:
+
+**Exemplo 1 - Documento de Identidade:**
+```
+Texto OCR: "Nome: Maria Santos\nData de Nascimento: 20/05/1985\nRG: 12.345.678-9"
+
+Dados Extraídos:
+{
+  "nome": "Maria",
+  "sobrenome": "Santos",
+  "data_nascimento": "20/05/1985"
+}
+```
+
+**Exemplo 2 - Carteira de Motorista:**
+```
+Texto OCR: "CARLOS EDUARDO OLIVEIRA\nNasc.: 1990-12-15\nCPF: 987.654.321-00"
+
+Dados Extraídos:
+{
+  "nome": "Carlos",
+  "sobrenome": "Eduardo Oliveira",
+  "data_nascimento": "1990-12-15"
+}
+```
+
+**Exemplo 3 - Sem Dados Completos:**
+```
+Texto OCR: "Este é um texto sem informações pessoais"
+
+Dados Extraídos:
+{
+  "nome": "",
+  "sobrenome": "",
+  "data_nascimento": ""
+}
+```
+
+### Vantagens:
+
+- ✅ **Inteligente:** Entende contexto e variações de formato
+- ✅ **Flexível:** Funciona com diferentes tipos de documentos
+- ✅ **Seguro:** Retorna vazios quando não encontra dados
+- ✅ **Preciso:** Usa GPT-4 para análise semântica avançada
+
 ## Concorrência e Isolamento
 
 ### ✅ Garantia de Isolamento Total
@@ -331,7 +428,8 @@ CMD ["node", "index.js"]
 ## Tecnologias
 
 - [Express.js](https://expressjs.com/) - Framework web
-- [Tesseract.js](https://tesseract.projectnaptha.com/) - OCR engine
+- [Tesseract.js](https://tesseract.projectnaptha.com/) - OCR engine para extração de texto
+- [OpenAI GPT-4](https://openai.com/) - IA para extração de dados estruturados
 - [Multer](https://github.com/expressjs/multer) - Middleware para upload de arquivos
 - [CORS](https://github.com/expressjs/cors) - Cross-Origin Resource Sharing
 
