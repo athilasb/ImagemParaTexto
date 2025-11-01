@@ -1,0 +1,24 @@
+{
+  "name": "imagem-para-texto",
+  "version": "1.0.0",
+  "description": "Projeto Node.js para converter imagens em texto usando OCR",
+  "main": "index.js",
+  "type": "module",
+  "scripts": {
+    "start": "node index.js"
+  },
+  "keywords": [
+    "ocr",
+    "image-to-text",
+    "tesseract",
+    "image-recognition"
+  ],
+  "author": "",
+  "license": "MIT",
+  "dependencies": {
+    "cors": "^2.8.5",
+    "express": "^5.1.0",
+    "multer": "^2.0.2",
+    "tesseract.js": "^5.1.0"
+  }
+}
