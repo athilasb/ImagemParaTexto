@@ -35,28 +35,50 @@ app.post('/ocr', upload.single('image'), async (req, res) => {
     const idioma = req.body.idioma || 'por';
     const imageBuffer = req.file.buffer;
 
+    // Parse dos campos a serem extraídos (pode ser JSON string ou array)
+    let campos = ['nome', 'sobrenome', 'data_nascimento']; // Padrão
+
+    if (req.body.campos) {
+      try {
+        // Se vier como string JSON, faz parse
+        campos = typeof req.body.campos === 'string'
+          ? JSON.parse(req.body.campos)
+          : req.body.campos;
+
+        // Valida se é um array
+        if (!Array.isArray(campos) || campos.length === 0) {
+          return res.status(400).json({
+            erro: 'O campo "campos" deve ser um array não vazio',
+            exemplo: '["titulo", "texto", "data"] ou string JSON: \'["titulo", "texto"]\'',
+            requestId: requestId
+          });
+        }
+      } catch (parseError) {
+        return res.status(400).json({
+          erro: 'Erro ao fazer parse do campo "campos"',
+          mensagem: 'Deve ser um array JSON válido',
+          exemplo: '["titulo", "texto", "data"]',
+          requestId: requestId
+        });
+      }
+    }
+
+    console.log(`[${requestId}] NOVA REQUISIÇÃO INICIADA`);
+    console.log(`[${requestId}] Arquivo: ${req.file.originalname}`);
+    console.log(`[${requestId}] Idioma: ${idioma}`);
+    console.log(`[${requestId}] Campos a extrair:`, campos);
+
     // Processa a imagem com o ID único (cada requisição isolada)
     const resultado = await imagemParaTexto(imageBuffer, idioma, requestId);
 
-    // Extrai dados estruturados do texto usando GPT
-    var prompt = `Você é um assistente especializado em extrair dados estruturados de textos.
-                    Analise o texto fornecido e extraia as seguintes informações:
-                    - nome (primeiro nome)
-                    - sobrenome (último nome ou nome completo sem o primeiro nome)
-                    - data_nascimento (formato: DD/MM/AAAA ou AAAA-MM-DD)
-
-                    Se algum dado não estiver presente no texto, retorne string vazia para esse campo.
-
-                    IMPORTANTE: Retorne APENAS um objeto JSON válido no formato:
-                    {"nome": "", "sobrenome": "", "data_nascimento": ""}
-
-                    Não inclua explicações, apenas o JSON.`;
-    const dadosExtraidos = await extrairDadosComGPT(resultado.texto,prompt, requestId);
+    // Extrai dados estruturados do texto usando GPT com campos dinâmicos
+    const dadosExtraidos = await extrairDadosComGPT(resultado.texto, campos, requestId);
 
     const resposta = {
       requestId: requestId, // ID para rastreamento
       texto_original: resultado.texto, // Texto original extraído do OCR
       dados_extraidos: dadosExtraidos, // Dados estruturados extraídos pelo GPT
+      campos_solicitados: campos, // Campos que foram solicitados para extração
       confianca: resultado.confianca,
       palavras: resultado.palavras,
       idioma: idioma,

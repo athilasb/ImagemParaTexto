@@ -1,14 +1,15 @@
 # API de OCR - Conversor de Imagem para Texto com IA
 
-API REST que converte imagens para texto usando OCR (Tesseract.js) e extrai dados estruturados (nome, sobrenome, data de nascimento) usando GPT-4.
+API REST que converte imagens para texto usando OCR (Tesseract.js) e extrai dados estruturados **customizáveis** usando GPT-4.
 
 ## 🚀 Funcionalidades
 
 - ✅ **OCR Avançado:** Extração de texto de imagens com Tesseract.js
-- ✅ **Extração de Dados com IA:** GPT-4 analisa o texto e extrai automaticamente:
-  - Nome (primeiro nome)
-  - Sobrenome
-  - Data de nascimento
+- ✅ **Extração de Dados Customizável com IA:** GPT-4 analisa o texto e extrai **QUALQUER campo** que você definir:
+  - Nome, sobrenome, data de nascimento (padrão)
+  - Título, texto, data
+  - Empresa, CNPJ, endereço, telefone
+  - **OU QUALQUER OUTRO CAMPO QUE VOCÊ PRECISAR!**
 - ✅ **Upload de Arquivos:** Envie imagens diretamente (multipart/form-data)
 - ✅ **Isolamento Total:** Cada requisição é completamente isolada
 - ✅ **Múltiplos Idiomas:** Português, Inglês, Espanhol, Francês, Alemão, Italiano
@@ -104,15 +105,24 @@ curl http://localhost:3000/health
 ```
 
 ### POST `/ocr`
-Extrai texto de uma imagem através de upload de arquivo e analisa com IA para extrair dados estruturados.
+Extrai texto de uma imagem através de upload de arquivo e analisa com IA para extrair dados estruturados **customizáveis**.
 
 **Content-Type:** `multipart/form-data`
 
 **Parâmetros (form-data):**
 - `image` (file, **obrigatório**): Arquivo de imagem (JPEG, PNG, GIF, BMP, WebP)
 - `idioma` (string, opcional): Código do idioma (padrão: `por`)
+- `campos` (string JSON, opcional): Array com os campos a extrair (padrão: `["nome", "sobrenome", "data_nascimento"]`)
 
-**Resposta (200):**
+**Exemplos de campos personalizados:**
+```json
+["titulo", "texto", "data"]
+["empresa", "cnpj", "endereco", "telefone"]
+["produto", "preco", "quantidade"]
+["nome_paciente", "medicamento", "dosagem"]
+```
+
+**Resposta (200) - Exemplo com campos padrão:**
 ```json
 {
   "requestId": "a1b2c3d4e5f6g7h8",
@@ -122,6 +132,7 @@ Extrai texto de uma imagem através de upload de arquivo e analisa com IA para e
     "sobrenome": "Silva",
     "data_nascimento": "15/03/1990"
   },
+  "campos_solicitados": ["nome", "sobrenome", "data_nascimento"],
   "confianca": 89.5,
   "palavras": 42,
   "idioma": "por",
@@ -131,13 +142,31 @@ Extrai texto de uma imagem através de upload de arquivo e analisa com IA para e
 }
 ```
 
+**Resposta (200) - Exemplo com campos customizados:**
+```json
+{
+  "requestId": "x9y8z7w6v5u4t3s2",
+  "texto_original": "Título: Relatório de Vendas\n\nData: 10/01/2025\nTexto: As vendas aumentaram 25%...",
+  "dados_extraidos": {
+    "titulo": "Relatório de Vendas",
+    "texto": "As vendas aumentaram 25%...",
+    "data": "10/01/2025"
+  },
+  "campos_solicitados": ["titulo", "texto", "data"],
+  "confianca": 92.3,
+  "palavras": 58,
+  "idioma": "por",
+  "arquivo": "relatorio.png",
+  "tamanho": 312456,
+  "timestamp": "2025-11-01T19:30:15.789Z"
+}
+```
+
 **Campos da resposta:**
 - `requestId`: ID único da requisição para rastreamento e debug
 - `texto_original`: Texto completo extraído da imagem via OCR
-- `dados_extraidos`: Dados estruturados extraídos pelo GPT-4
-  - `nome`: Primeiro nome (vazio se não encontrado)
-  - `sobrenome`: Sobrenome (vazio se não encontrado)
-  - `data_nascimento`: Data no formato DD/MM/AAAA ou AAAA-MM-DD (vazio se não encontrado)
+- `dados_extraidos`: Objeto com os campos solicitados extraídos pelo GPT-4 (valores vazios se não encontrados)
+- `campos_solicitados`: Array com os campos que foram solicitados para extração
 - `confianca`: Nível de confiança do OCR (0-100)
 - `palavras`: Número de palavras identificadas no OCR
 - `idioma`: Idioma utilizado no processamento
@@ -163,7 +192,7 @@ Extrai texto de uma imagem através de upload de arquivo e analisa com IA para e
 
 ## Exemplos de Uso
 
-### 1. cURL
+### 1. cURL - Campos Padrão
 
 ```bash
 curl -X POST http://localhost:3000/ocr \
@@ -171,10 +200,29 @@ curl -X POST http://localhost:3000/ocr \
   -F "idioma=por"
 ```
 
-### 2. JavaScript (Frontend)
+### 2. cURL - Campos Customizados
+
+```bash
+# Extrair título, texto e data
+curl -X POST http://localhost:3000/ocr \
+  -F "image=@documento.png" \
+  -F 'campos=["titulo", "texto", "data"]'
+
+# Extrair dados empresariais
+curl -X POST http://localhost:3000/ocr \
+  -F "image=@cartao.png" \
+  -F 'campos=["empresa", "cnpj", "endereco", "telefone", "email"]'
+
+# Extrair dados de nota fiscal
+curl -X POST http://localhost:3000/ocr \
+  -F "image=@nota.png" \
+  -F 'campos=["numero_nota", "data_emissao", "valor_total", "nome_fornecedor"]'
+```
+
+### 3. JavaScript (Frontend)
 
 ```javascript
-// Upload de arquivo usando FormData
+// Upload de arquivo usando FormData com campos padrão
 const fileInput = document.getElementById('fileInput');
 const file = fileInput.files[0];
 
@@ -188,9 +236,27 @@ const response = await fetch('http://localhost:3000/ocr', {
 });
 
 const resultado = await response.json();
-console.log('Texto:', resultado.texto);
+console.log('Texto:', resultado.texto_original);
+console.log('Dados:', resultado.dados_extraidos);
 console.log('Confiança:', resultado.confianca);
-console.log('Arquivo:', resultado.arquivo);
+```
+
+### 4. JavaScript - Com Campos Customizados
+
+```javascript
+const formData = new FormData();
+formData.append('image', file);
+formData.append('campos', JSON.stringify(['titulo', 'texto', 'data']));
+
+const response = await fetch('http://localhost:3000/ocr', {
+  method: 'POST',
+  body: formData
+});
+
+const resultado = await response.json();
+console.log('Título:', resultado.dados_extraidos.titulo);
+console.log('Texto:', resultado.dados_extraidos.texto);
+console.log('Data:', resultado.dados_extraidos.data);
 ```
 
 ### 3. Node.js (usando child_process)
@@ -214,22 +280,78 @@ console.log('Confiança:', resultado.confianca + '%');
 console.log('Arquivo:', resultado.arquivo);
 ```
 
-### 4. Python
+### 5. Python - Com Campos Customizados
 
 ```python
 import requests
+import json
 
-# Upload de arquivo
+# Upload de arquivo com campos personalizados
 with open('imagem.png', 'rb') as f:
     files = {'image': f}
-    data = {'idioma': 'por'}
+    data = {
+        'idioma': 'por',
+        'campos': json.dumps(['titulo', 'texto', 'data'])
+    }
     response = requests.post('http://localhost:3000/ocr', files=files, data=data)
 
 resultado = response.json()
-print('Texto:', resultado['texto'])
-print('Confiança:', resultado['confianca'])
-print('Arquivo:', resultado['arquivo'])
+print('Título:', resultado['dados_extraidos']['titulo'])
+print('Texto:', resultado['dados_extraidos']['texto'])
+print('Data:', resultado['dados_extraidos']['data'])
+print('Campos:', resultado['campos_solicitados'])
 ```
+
+## 📋 Exemplos de Campos Customizáveis
+
+A API é **totalmente flexível**! Você pode extrair qualquer tipo de informação definindo os campos desejados:
+
+### Documentos de Identidade
+```json
+["nome", "rg", "cpf", "data_nascimento", "orgao_emissor"]
+```
+
+### Contratos
+```json
+["titulo_contrato", "partes_envolvidas", "data_assinatura", "valor", "prazo"]
+```
+
+### Receitas Médicas
+```json
+["nome_paciente", "medicamento", "dosagem", "frequencia", "medico", "crm"]
+```
+
+### Comprovantes Bancários
+```json
+["tipo_comprovante", "valor", "data", "beneficiario", "banco", "agencia"]
+```
+
+### Notas Fiscais
+```json
+["numero_nota", "data_emissao", "valor_total", "nome_fornecedor", "cnpj"]
+```
+
+### Cardápios de Restaurante
+```json
+["nome_prato", "preco", "ingredientes", "categoria"]
+```
+
+### Cartões de Visita
+```json
+["nome", "cargo", "empresa", "telefone", "email", "endereco"]
+```
+
+### Certificados
+```json
+["nome_pessoa", "titulo_certificado", "data_emissao", "instituicao", "carga_horaria"]
+```
+
+### Currículos
+```json
+["nome", "email", "telefone", "experiencia_profissional", "formacao", "habilidades"]
+```
+
+### **E muito mais!** Defina os campos que você precisa!
 
 ## Idiomas Suportados
 
@@ -259,14 +381,17 @@ curl -X POST http://localhost:3000/ocr \
 
 **Tamanho máximo:** 50MB por arquivo
 
-## 🤖 Extração de Dados com IA
+## 🤖 Extração de Dados Customizável com IA
 
-A API utiliza **GPT-4o-mini** da OpenAI para analisar automaticamente o texto extraído e identificar dados estruturados.
+A API utiliza **GPT-4o-mini** da OpenAI para analisar automaticamente o texto extraído e identificar **QUALQUER dado estruturado** que você definir.
 
 ### Como funciona:
 
 1. **OCR (Tesseract):** Extrai todo o texto da imagem
-2. **Análise IA (GPT-4):** Processa o texto e identifica:
+2. **Definição de Campos:** Você escolhe quais campos quer extrair
+3. **Análise IA (GPT-4):** Processa o texto e extrai os campos solicitados
+
+### Campos Padrão (se não especificar):
    - **Nome:** Primeiro nome da pessoa
    - **Sobrenome:** Sobrenome ou resto do nome completo
    - **Data de Nascimento:** Em formato DD/MM/AAAA ou AAAA-MM-DD
@@ -309,10 +434,58 @@ Dados Extraídos:
 }
 ```
 
+**Exemplo 4 - Nota Fiscal com Campos Customizados:**
+```bash
+# Requisição
+curl -X POST http://localhost:3000/ocr \
+  -F "image=@nota_fiscal.png" \
+  -F 'campos=["numero_nota", "data_emissao", "valor_total", "nome_fornecedor"]'
+
+# Texto OCR extraído
+"NOTA FISCAL ELETRÔNICA
+Nº 12345
+Data de Emissão: 15/01/2025
+Fornecedor: Empresa ABC LTDA
+Valor Total: R$ 1.500,00"
+
+# Dados Extraídos pelo GPT
+{
+  "numero_nota": "12345",
+  "data_emissao": "15/01/2025",
+  "valor_total": "R$ 1.500,00",
+  "nome_fornecedor": "Empresa ABC LTDA"
+}
+```
+
+**Exemplo 5 - Cartão de Visita com Campos Customizados:**
+```bash
+# Requisição
+curl -X POST http://localhost:3000/ocr \
+  -F "image=@cartao_visita.png" \
+  -F 'campos=["nome", "cargo", "empresa", "telefone", "email"]'
+
+# Texto OCR extraído
+"João Pedro Silva
+Gerente de Vendas
+TechSolutions Ltda
+(11) 98765-4321
+joao.silva@techsolutions.com.br"
+
+# Dados Extraídos pelo GPT
+{
+  "nome": "João Pedro Silva",
+  "cargo": "Gerente de Vendas",
+  "empresa": "TechSolutions Ltda",
+  "telefone": "(11) 98765-4321",
+  "email": "joao.silva@techsolutions.com.br"
+}
+```
+
 ### Vantagens:
 
 - ✅ **Inteligente:** Entende contexto e variações de formato
-- ✅ **Flexível:** Funciona com diferentes tipos de documentos
+- ✅ **Flexível:** Funciona com qualquer tipo de documento
+- ✅ **Customizável:** Você define exatamente quais campos quer extrair
 - ✅ **Seguro:** Retorna vazios quando não encontra dados
 - ✅ **Preciso:** Usa GPT-4 para análise semântica avançada
 
